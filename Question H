@@ -1,0 +1,120 @@
+#include <iostream>
+#include <limits>
+#include <queue>
+#include <vector>
+
+class Edge;
+
+class Graph {
+ public:
+  uint64_t vertex;
+  int num;
+  uint64_t already;
+
+  Graph(uint64_t a, int b, uint64_t c) : vertex(a), num(b), already(c) {}
+};
+
+class Overloading {
+ public:
+  bool operator()(const Graph& alpha, const Graph& beta) {
+    return alpha.num > beta.num;
+  }
+};
+
+class CheckIntersection {
+ public:
+  std::priority_queue<Graph, std::vector<Graph>, Overloading>& pq;
+  std::vector<std::vector<Edge>>& map;
+  std::vector<std::vector<int>>& costs;
+  uint64_t omega;
+  uint64_t node;
+  int weight;
+  uint64_t edge_used;
+
+  CheckIntersection(
+      std::priority_queue<Graph, std::vector<Graph>, Overloading>& p,
+      std::vector<std::vector<Edge>>& g, std::vector<std::vector<int>>& w,
+      uint64_t max_cf, uint64_t n, int wt, uint64_t edge)
+      : pq(p),
+        map(g),
+        costs(w),
+        omega(max_cf),
+        node(n),
+        weight(wt),
+        edge_used(edge) {}
+};
+
+class Edge {
+ public:
+  uint64_t to;
+  int weight;
+
+  Edge(uint64_t t, int w) : to(t), weight(w) {}
+};
+
+void CheckForPaths(CheckIntersection& paths) {
+  if (paths.edge_used < paths.omega) {
+    for (Edge& edge : paths.map[paths.node]) {
+      uint64_t adjacent_node = edge.to;
+      int adjacent_weight = edge.weight;
+
+      if (paths.costs[adjacent_node][paths.edge_used + 1] >
+          paths.weight + adjacent_weight) {
+        paths.costs[adjacent_node][paths.edge_used + 1] =
+            paths.weight + adjacent_weight;
+        paths.pq.emplace(adjacent_node, paths.weight + adjacent_weight,
+                         paths.edge_used + 1);
+      }
+    }
+  }
+}
+
+int Algorithm(std::vector<std::vector<Edge>>& graph,
+              std::vector<std::vector<int>>& weights, uint64_t omega,
+              uint64_t start, uint64_t finish) {
+  std::priority_queue<Graph, std::vector<Graph>, Overloading> pq;
+
+  pq.emplace(start, 0, 0);
+  weights[start][0] = 0;
+
+  while (!pq.empty()) {
+    uint64_t node = pq.top().vertex;
+    int weight = pq.top().num;
+    uint64_t edge_used = pq.top().already;
+
+    pq.pop();
+
+    if (node == finish) {
+      return weight;
+    }
+
+    CheckIntersection relaxed(pq, graph, weights, omega, node, weight,
+                              edge_used);
+    CheckForPaths(relaxed);
+  }
+
+  return -1;
+}
+
+int main() {
+  int universes;
+  uint64_t teleportations, omega, a, b;
+
+  std::cin >> universes >> teleportations >> omega >> a >> b;
+
+  std::vector<std::vector<Edge>> graph(universes + 1);
+  std::vector<std::vector<int>> weights(
+      universes + 1,
+      std::vector<int>(omega + 1, std::numeric_limits<int>::max()));
+
+  for (uint64_t i = 0; i < teleportations; i++) {
+    uint64_t from, to;
+    int size;
+    std::cin >> from >> to >> size;
+    graph[from].emplace_back(to, size);
+  }
+
+  std::cout << Algorithm(graph, weights, omega, a, b);
+
+  return 0;
+}
