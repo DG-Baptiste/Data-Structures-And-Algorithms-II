@@ -1,0 +1,88 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+
+template <typename T>
+struct Node {
+  T universe;
+  T cost;
+
+  bool operator<(const Node<T>& other) const { return cost > other.cost; }
+};
+
+template <typename T>
+struct UniverseTeleportation {
+  static const T kInf;
+
+  static void ReadInput(T& k_a, T& k_b, T& k_m, T& k_x, T& k_y) {
+    int result =
+        std::scanf("%lld %lld %lld %lld %lld", &k_a, &k_b, &k_m, &k_x, &k_y);
+
+    if (result != 5) {
+      // Handle input error, for example, print an error message and exit the
+      // program.
+      std::cerr << "Error: Invalid input format." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+  }
+
+  static void BuildGraph(const T kA, const T kB, const T kM,
+                         std::vector<std::vector<std::pair<T, T>>>& graph) {
+    for (T i = 0; i < kM; ++i) {
+      T next1 = (i + 1) % kM;
+      T next2 = (i * i + 1) % kM;
+
+      graph[i].push_back({next1, kA});
+      graph[i].push_back({next2, kB});
+    }
+  }
+
+  static T FindMinCost(const T kX, const T kY,
+                       const std::vector<std::vector<std::pair<T, T>>>& graph) {
+    std::priority_queue<Node<T>> pq;
+    std::vector<bool> visited(graph.size(), false);
+    std::vector<T> distances(graph.size(), kInf);
+    pq.push({kX, 0});
+    distances[kX] = 0;
+    while (!pq.empty()) {
+      Node<T> current_node = pq.top();
+      pq.pop();
+      T current_universe = current_node.universe;
+      T current_cost = current_node.cost;
+      if (visited[current_universe]) {
+        continue;
+      }
+      visited[current_universe] = true;
+      if (current_universe == kY) {
+        return current_cost;
+      }
+      for (const auto& edge : graph[current_universe]) {
+        T next_universe = edge.first;
+        T edge_cost = edge.second;
+        T new_cost = current_cost + edge_cost;
+        if (distances[next_universe] > new_cost) {
+          distances[next_universe] = new_cost;
+          pq.push({next_universe, new_cost});
+        }
+      }
+    }
+    return -1;
+  }
+};
+
+template <typename T>
+const T UniverseTeleportation<T>::kInf = std::numeric_limits<T>::max();
+
+int main() {
+  long long a, b, m, x, y;
+  UniverseTeleportation<long long>::ReadInput(a, b, m, x, y);
+
+  std::vector<std::vector<std::pair<long long, long long>>> graph(m);
+  UniverseTeleportation<long long>::BuildGraph(a, b, m, graph);
+
+  long long result = UniverseTeleportation<long long>::FindMinCost(x, y, graph);
+
+  std::cout << result << std::endl;
+
+  return 0;
+}
