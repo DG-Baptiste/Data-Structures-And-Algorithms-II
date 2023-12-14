@@ -1,59 +1,86 @@
 #include <iostream>
 #include <vector>
 
-std::vector<std::vector<int>> FindReachableNodes(
-    const std::vector<std::vector<int>>& adjacency) {
-  int num_nodes = adjacency.size();
-  std::vector<std::vector<int>> reachable_nodes = adjacency;
+const int BITS_PER_INT = 32;
 
-  bool has_updates = true;
-  while (has_updates) {
-    has_updates = false;
+class CustomBitset {
+ public:
+  explicit CustomBitset(int size)
+      : size(size), bits((size + BITS_PER_INT - 1) / BITS_PER_INT, 0) {}
 
-    for (int intermediate_node = 0; intermediate_node < num_nodes;
-         ++intermediate_node) {
-      for (int source_node = 0; source_node < num_nodes; ++source_node) {
-        if (reachable_nodes[source_node][intermediate_node] == 1) {
-          for (int destination_node = 0; destination_node < num_nodes;
-               ++destination_node) {
-            if (reachable_nodes[intermediate_node][destination_node] == 1 &&
-                reachable_nodes[source_node][destination_node] == 0) {
-              reachable_nodes[source_node][destination_node] = 1;
-              has_updates = true;
-            }
-          }
+  void set(int pos) {
+    bits[pos / BITS_PER_INT] |= (1u << (pos % BITS_PER_INT));
+  }
+
+  bool test(int pos) const {
+    return (bits[pos / BITS_PER_INT] & (1u << (pos % BITS_PER_INT))) != 0;
+  }
+
+  void operator|=(const CustomBitset& other) {
+    for (int i = 0; i < bits.size(); ++i) {
+      bits[i] |= other.bits[i];
+    }
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const CustomBitset& bitset) {
+    for (int i = 0; i < bitset.size; ++i) {
+      os << bitset.test(i);
+    }
+    return os;
+  }
+
+ private:
+  int size;
+  std::vector<unsigned int> bits;
+};
+
+class TransitiveClosure {
+ public:
+  explicit TransitiveClosure(const std::vector<CustomBitset>& adjacency_matrix)
+      : num_vertices(adjacency_matrix.size()), paths(adjacency_matrix) {}
+
+  void ComputeClosure() {
+    for (int alpha = 0; alpha < num_vertices; alpha++) {
+      for (int beta = 0; beta < num_vertices; beta++) {
+        if (paths[beta].test(alpha)) {
+          paths[beta] |= paths[alpha];
         }
       }
     }
   }
 
-  return reachable_nodes;
-}
+  void DisplayPaths() const {
+    for (int i = 0; i < num_vertices; i++) {
+      std::cout << paths[i] << std::endl;
+    }
+  }
+
+ private:
+  int num_vertices;
+  std::vector<CustomBitset> paths;
+};
 
 int main() {
-  int num_nodes;
-  std::cin >> num_nodes;
+  int num_vertices;
+  std::cin >> num_vertices;
 
-  std::vector<std::vector<int>> adjacency_matrix(num_nodes,
-                                                 std::vector<int>(num_nodes));
+  std::vector<CustomBitset> adjacency_matrix(num_vertices,
+                                             CustomBitset(num_vertices));
 
-  for (int i = 0; i < num_nodes; i++) {
+  for (int i = 0; i < num_vertices; i++) {
     std::string row;
     std::cin >> row;
-    for (int j = 0; j < num_nodes; j++) {
-      adjacency_matrix[i][j] = row[j] - '0';
+    for (int j = 0; j < num_vertices; j++) {
+      if (row[j] == '1') {
+        adjacency_matrix[i].set(j);
+      }
     }
   }
 
-  std::vector<std::vector<int>> reachable_nodes =
-      FindReachableNodes(adjacency_matrix);
-
-  for (int i = 0; i < num_nodes; i++) {
-    for (int j = 0; j < num_nodes; j++) {
-      std::cout << reachable_nodes[i][j];
-    }
-    std::cout << std::endl;
-  }
+  TransitiveClosure closure(adjacency_matrix);
+  closure.ComputeClosure();
+  closure.DisplayPaths();
 
   return 0;
 }
