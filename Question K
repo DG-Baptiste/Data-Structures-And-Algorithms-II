@@ -1,0 +1,91 @@
+#include <algorithm>
+#include <climits>
+#include <cmath>
+#include <iostream>
+#include <vector>
+
+class SparseTable {
+ private:
+  std::vector<std::vector<std::pair<int, int>>> table;
+
+ public:
+  SparseTable() {}
+
+  void buildTable(const std::vector<int>& sequence) {
+    int N = sequence.size();
+    int DEPTH = static_cast<int>(log2(N) + 1);
+    table.resize(N, std::vector<std::pair<int, int>>(DEPTH, {0, 0}));
+
+    for (int i = 0; i < N; ++i) {
+      table[i][0] = {sequence[i], i};
+    }
+
+    for (int j = 1; (1 << j) <= N; ++j) {
+      for (int i = 0; i + (1 << j) - 1 < N; ++i) {
+        auto left = table[i][j - 1];
+        auto right = table[i + (1 << (j - 1))][j - 1];
+        table[i][j] = std::min(left, right);
+      }
+    }
+  }
+
+  std::pair<int, int> query(int left, int right) {
+    int j = static_cast<int>(log2(right - left + 1));
+    auto leftBlock = table[left][j];
+    auto rightBlock = table[right - (1 << j) + 1][j];
+    return std::min(leftBlock, rightBlock);
+  }
+
+  int findSecondMin(const std::vector<int>& sequence, int left, int right) {
+    auto minBlock = query(left - 1, right - 1);
+    int minIndex = minBlock.second;
+    int secondSmallest = INT_MAX;
+
+    if (left - 1 <= minIndex - 1) {
+      secondSmallest = std::min(secondSmallest,
+                                sequence[query(left - 1, minIndex - 1).second]);
+    }
+
+    if (minIndex + 1 <= right - 1) {
+      secondSmallest = std::min(
+          secondSmallest, sequence[query(minIndex + 1, right - 1).second]);
+    }
+
+    return secondSmallest;
+  }
+};
+
+int main() {
+  SparseTable sparseTable;
+  int N, M;
+  std::cin >> N >> M;
+
+  if (N <= 0) {
+    std::cout << "Invalid input: Sequence size must be greater than 0."
+              << std::endl;
+    return 0;
+  }
+
+  std::vector<int> sequence(N);
+  for (int i = 0; i < N; ++i) {
+    std::cin >> sequence[i];
+  }
+
+  sparseTable.buildTable(sequence);
+
+  for (int i = 0; i < M; ++i) {
+    int left, right;
+    std::cin >> left >> right;
+
+    if (left < 1 || right > N || left > right) {
+      std::cout << "Invalid query: Query indices are out of bounds."
+                << std::endl;
+      continue;
+    }
+
+    int min2 = sparseTable.findSecondMin(sequence, left, right);
+    std::cout << min2 << '\n';
+  }
+
+  return 0;
+}
